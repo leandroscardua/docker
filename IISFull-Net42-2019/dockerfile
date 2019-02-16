@@ -1,0 +1,84 @@
+FROM mcr.microsoft.com/windows/servercore:ltsc2019
+
+
+# Install .NET Fx 3.5
+RUN powershell -Command \
+        $ErrorActionPreference = 'Stop'; \
+        $ProgressPreference = 'SilentlyContinue'; \
+        Invoke-WebRequest \
+            -UseBasicParsing \
+            -Uri "https://dotnetbinaries.blob.core.windows.net/dockerassets/microsoft-windows-netfx3-1809.zip" \
+            -OutFile microsoft-windows-netfx3.zip; \
+        Expand-Archive microsoft-windows-netfx3.zip; \
+        Remove-Item -Force microsoft-windows-netfx3.zip; \
+        Add-WindowsPackage -Online -PackagePath .\microsoft-windows-netfx3\microsoft-windows-netfx3-ondemand-package~31bf3856ad364e35~amd64~~.cab; \
+		Remove-Item -Force -Recurse microsoft-windows-netfx3
+
+# ngen .NET 3.5 Fx
+ENV COMPLUS_NGenProtectedProcess_FeatureEnabled 0
+RUN \Windows\Microsoft.NET\Framework64\v2.0.50727\ngen update & \
+\Windows\Microsoft.NET\Framework\v2.0.50727\ngen update
+
+RUN  dism /online /enable-feature /all /featurename:IIS-Webserver \
+ /featurename:IIS-WebServerRole \
+ /featurename:IIS-CommonHttpFeatures \
+ /featurename:IIS-Security \
+ /featurename:IIS-RequestFiltering \
+ /featurename:IIS-StaticContent \
+ /featurename:IIS-DefaultDocument \
+ /featurename:IIS-DirectoryBrowsing \
+ /featurename:IIS-HttpErrors \
+ /featurename:IIS-HttpRedirect \
+ /featurename:IIS-ApplicationDevelopment \
+ /featurename:IIS-ApplicationInit \
+ /featurename:IIS-ISAPIExtensions \
+ /featurename:IIS-ISAPIFilter \
+ /featurename:IIS-ASPNET \
+ /featurename:IIS-ASPNET45 \
+ /featurename:IIS-ASP \
+ /featurename:IIS-CGI \
+ /featurename:IIS-HealthAndDiagnostics \
+ /featurename:IIS-HttpLogging \
+ /featurename:IIS-LoggingLibraries \
+ /featurename:IIS-RequestMonitor \
+ /featurename:IIS-HttpTracing \
+ /featurename:IIS-ODBCLogging \
+ /featurename:IIS-CertProvider \
+ /featurename:IIS-BasicAuthentication \
+ /featurename:IIS-DigestAuthentication \
+ /featurename:IIS-ClientCertificateMappingAuthentication \
+ /featurename:IIS-IISCertificateMappingAuthentication \
+ /featurename:IIS-URLAuthorization \
+ /featurename:IIS-IPSecurity \
+ /featurename:IIS-Performance \
+ /featurename:IIS-HttpCompressionStatic \
+ /featurename:IIS-HttpCompressionDynamic \
+ /featurename:IIS-WebServerManagementTools \
+ /featurename:IIS-ManagementConsole \
+ /featurename:IIS-ManagementScriptingTools \
+ /featurename:IIS-IIS6ManagementCompatibility \
+ /featurename:IIS-Metabase \
+ /featurename:IIS-WMICompatibility \
+ /featurename:IIS-LegacyScripts \
+ /featurename:WAS-WindowsActivationService \
+ /featurename:WAS-ProcessModel \
+ /featurename:WAS-NetFxEnvironment \
+ /featurename:WAS-ConfigurationAPI \
+ /featurename:WCF-Services45 \
+ /featurename:WCF-HTTP-Activation45 \
+ /featurename:WCF-TCP-Activation45 \
+ /featurename:WCF-TCP-PortSharing45 \
+ /featurename:WCF-HTTP-Activation \
+ /featurename:WCF-NonHTTP-Activation /NoRestart /Quiet
+
+
+RUN powershell -Command \
+        $ErrorActionPreference = 'Stop'; \
+        $ProgressPreference = 'SilentlyContinue'; \
+		new-item -path C:\inetpub\wwwroot\ -name "reports" -type directory
+		
+RUN	icacls C:\inetpub\wwwroot\reports\ /grant IUSR:(OI)(CI)M /T
+RUN	icacls C:\inetpub\wwwroot\reports\ /grant IIS_IUSRS:(OI)(CI)M /T 
+	
+EXPOSE 80
+EXPOSE 443
